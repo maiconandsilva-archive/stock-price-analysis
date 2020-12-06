@@ -1,0 +1,5 @@
+ipykernel==5.3.4
+pandas==1.1.4
+pandas_datareader==0.9.0
+matplotlib==3.3.3
+seaborn==0.11.0
