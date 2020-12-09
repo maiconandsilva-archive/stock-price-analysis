@@ -6,13 +6,14 @@
 
 - [ ] **Medidas de tendência central**
     - [ ] Média
-    - [x] [Moda ¹*](#n1)
-    - [ ] Mediana
+    - [x] [Moda ¹*](#footer-1)
+    - [x] [Mediana ¹*](#footer-1)
 
 - [ ] **Medidas de dispersão**
     - [ ] Variância
     - [ ] Desvio Médio
     - [ ] Desvio Padrão
+    - [ ] Coeficiente de variação
 
 - [ ] **Probabilidade**
 
@@ -21,11 +22,9 @@
     - [ ] Binomial
     - [ ] Poisson
 
-- [ ] **[Amostragem ²*](#n2)**
+- [x] **[Amostragem ¹*](#footer-1)**
 - [ ] **Testes de hipótese**
 - [ ] **Regressão**
 - [ ] **Modelo de regressão**
 
-**Não se aplicam porque os dados são:**
-1. Dados representados em número absoluto e/ou ponto flutuante <a name="n1"></a>
-2. Gerados automaticamente <a name="n2"></a>
+1. **Não se aplica ou não representa o conjunto de dados** <a name="footer-1"></a>
