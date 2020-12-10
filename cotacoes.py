@@ -5,56 +5,89 @@ import math
 import functools
 
 
-# @pd.api.extensions.register_dataframe_accessor('cotacoes')
+@pd.api.extensions.register_dataframe_accessor('analise')
 class Cotacoes:
-    def __init__(self, serie, *args, **kwargs):
-        """
-        n_classes: Numero de classes para tabela de classes
-        """
-        self.serie = serie
-        self.n_classes = kwargs.pop('n_classes', 10) # numero de classes
-        self._n_classes = np.round(math.pow(self.amplitude, 1/2))
+    """
+    serie: pd.Dataframe
+        Cotações de um determinado periodo de um instrumento financeiro.
+        Espera-se que a variável serie tenha as seguintes colunas:
+            - Volume    -> Número de negócios no dado período
+            - Open      -> Cotação na abertura do pregão
+            - Close     -> Cotação no fechamento do pregão
+            - Adj Close -> Cotação de ajuste de cada pregão
+            - High      -> Maior cotação no dado período
+            - Low       -> Menor cotação no dado período
+        
+    n_classes: int
+        Numero de classes para tabela de classes
+        default: √serie.size (raiz quadrada do número de dados da série)
+    """
+    
+    def __init__(self, serie):
+        self._serie = self.__normalizar(serie)
+        
+        # Padrão para o número de classes
+        # Segundo recomendacao material Prof. Lapponi
+        self._nclasses = np.round(math.pow(len(self._serie), 0.5))
+    
+    def __normalizar(self, serie):
+        return serie
     
     @property
-    def n_classes(self):
-        return self._n_classes
+    def nclasses(self):
+        return self._nclasses
     
-    @n_classes.setter
-    def n_classes(self, value):
-        self._n_classes = value
-    
-    @functools.cached_property
-    def minima(self):
-        "Menor cotacao negociada na serie do ano"
-        return self.serie["Low"].min()
-     
-    @functools.cached_property
-    def maxima(self):
-        "Maior cotacao negociada na serie do ano"
-        return self.serie["High"].max()
-     
-    @functools.cached_property
-    def amplitude(self):
-        """
-        Diferenca entre a maior e a menor cotacao do ano.
-        """
-        return self.maxima - self.minima
+    @nclasses.setter
+    def nclasses(self, nclasses):
+        self._nclasses = nclasses
     
     @functools.cached_property
     def volumetotal(self):
         "Volume de negociacoes no instrumento financeiro"
-        return self.serie['Volume'].sum()
+        return self._serie['Volume'].sum()
+
+    @functools.cached_property
+    def amplitude_serie(self):
+        """
+        Diferenca entre a maior e a menor cotacao do ano.
+        """
+        return self.maxima('Open') - self.minima('Close')    
+    
+    @functools.lru_cache
+    def minima(self, coluna):
+        "Menor cotacao negociada na serie do ano"
+        return self._serie[coluna].min()
+    
+    @functools.lru_cache
+    def maxima(self, coluna):
+        """
+        Maior cotacao negociada na serie do ano, seja abertura, fechamento
+        """
+        return self._serie[coluna].max()
+     
+    @functools.lru_cache
+    def amplitude(self, coluna):
+        """
+        Diferenca entre a maior e a menor cotacao ou volume do ano.
+        """
+        return self.maxima(coluna) - self.minima(coluna)
+    
+    @functools.lru_cache
+    def tabela_classes_cotacoes(self, cotacao):
+        coluna = self._serie[self._serie[cotacao] != 0.0][cotacao]
+        return pd.DataFrame(coluna.groupby(
+            pd.cut(coluna, bins=self.nclasses, precision=2)).count())    
     
     @functools.cached_property
     def tabela_classes(self):
-        amplitude_classe = self.amplitude / self.n_classes
+        amplitude_classe = self.amplitude_serie / self.nclasses
         
         classes = np.arange(
-            self.minima, self.maxima + amplitude_classe, amplitude_classe)
+            self.minima('Low'), self.maxima('High') + amplitude_classe, amplitude_classe)
         
-        _s = (self.serie
+        _s = (self._serie
             .drop(columns=['Adj Close', 'High', 'Low', 'Open'])
-            .groupby(pd.cut(self.serie['Close'], bins=10)) #classes))
+            .groupby(pd.cut(self._serie['Close'], bins=self.nclasses)) #classes))
             .sum()
             .drop(columns=['Close']))
         
@@ -66,26 +99,43 @@ class Cotacoes:
     
     @functools.cached_property
     def tabela_classes_volume(self):
-        _svol = (self.serie['Volume'] / 1000000).round(decimals=0).astype(int)
+        _s = (self._serie['Volume'] / 100000).round(decimals=0).astype(int)
 
-        amplitude_classe = np.ceil((_svol.max() - _svol.min()) / self.n_classes)
+        amplitude_classe = np.ceil((_s.max() - _s.min()) / self.nclasses)
         
-        classes = np.arange(_svol.min(),
-                _svol.max() + _svol.max() % amplitude_classe, amplitude_classe)
+        classes = np.arange(_s.min(),
+                _s.max() + _s.max() % amplitude_classe, amplitude_classe)
         
-        _c = iter(classes); next(_c)
+        # _c = iter(classes); next(_c)
         
         # labels = ['%s ⊣ %s' % (left, right) for left, right in zip(classes, _c)]
         labels = None
         
-        _svol = _svol.groupby(pd.cut(_svol, classes, labels=labels)).count()
+        _s = _s.groupby(pd.cut(_s, classes, labels=labels)).count()
                 
-        return _svol
+        return _s
 
+    @functools.lru_cache
+    def cotacao_agrupada_por_periodo(self, periodo):
+        _s = self._serie.resample(periodo).agg({
+            'Open': 'first',
+            'Close': 'last',
+            'High': 'max',
+            'Low': 'min',
+            'Volume': 'sum',
+        })
+        return _s
     
-    @functools.cached_property
-    def tabela_classes_preco(self):
-        coluna = self.serie[self.serie['Open'] != 0.0]['Open']
-        _s = pd.DataFrame(coluna.groupby(pd.cut(coluna, bins=10, precision=2))
-                          .count())
+    @functools.lru_cache
+    def diferenca_mesmo_periodo(self, coluna1, coluna2, nome=''):
+        _s = self._serie.copy()
+        _s[nome or f'{coluna1} - {coluna2}'] = _s[coluna1] - _s[coluna2]
+        return _s
+    
+    @functools.lru_cache
+    def diferenca_periodos_distintos(self, coluna1, coluna2, nome=''):
+        _s = self._serie.copy()
+        _sdiff = self._serie[1:].copy()
+        
+        _s[nome or f'{coluna1} - {coluna2}'] = _s[coluna1] - _sdiff[coluna2]
         return _s

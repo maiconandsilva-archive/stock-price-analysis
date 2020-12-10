@@ -1,6 +1,7 @@
 # Checklist para implementação
 
 - [ ] **Distribuição de frequências**
+    - [x] Divisão em classes
     - [x] Frequência relativa
     - [x] Frequência agregada
 
