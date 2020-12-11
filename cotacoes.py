@@ -82,7 +82,7 @@ class Cotacoes:
         _s = helpers.verificar_tabela(kwargs.get('tabela'), self._serie)
         return (_s[col1].shift() if periodos_consecutivos else _s[col1]) - _s[col2]
         
-    @functools.lru_cache
+    @helpers.tabela()
     def tabela_classes_cotacoes(self, cotacao, **kwargs):
         coluna = self._serie[self._serie[cotacao] != 0.0][cotacao]
         return pd.DataFrame(coluna.groupby(

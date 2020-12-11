@@ -23,7 +23,7 @@
     - [ ] Binomial
     - [ ] Poisson
 
-- [x] **[Amostragem ¹*](#footer-1)**
+- [ ] **[Amostragem ¹*](#footer-1)**
 - [ ] **Testes de hipótese**
 - [ ] **Regressão**
 - [ ] **Modelo de regressão**
