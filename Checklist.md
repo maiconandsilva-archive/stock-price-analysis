@@ -27,5 +27,3 @@
 - [ ] **Testes de hipótese**
 - [ ] **Regressão**
 - [ ] **Modelo de regressão**
-
-1. **Não se aplica ou não representa o conjunto de dados** <a name="footer-1"></a>
